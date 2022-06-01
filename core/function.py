@@ -18,6 +18,15 @@ def maxDegree(G):
     return max(degrees)
 
 
+# 缩减规则2中的n公式
+def rule2Lemma(K, D):
+    if 1 <= D <= 2 or K == 1:
+        n = K + D
+    else:
+        n = K + D + 1 + ((int)(D / 3)) * (K - 2)
+    return n
+
+
 # 用于画图的函数
 def paint(GList, H):
     # 添加加权边
@@ -36,12 +45,11 @@ def paint(GList, H):
     plt.show()
 
 
-
-
-
 class Fun:
     def __init__(self, G):
         self.G = G
+        self.weightMax = self.maxWeight(G)
+        self.degreeMax = maxDegree(G)
 
     # 求图G的最小权重（）
     def minWeight(self, G):
@@ -98,8 +106,10 @@ class Fun:
     # 求出社区的凝聚力分数
     # score=w+d
     def cohesiveScore(self, H):
-        degreeScore = minDegree(nx.subgraph(self.G, H)) / maxDegree(nx.subgraph(self.G, H))
-        weightScore = self.minWeight(nx.subgraph(self.G, H)) / self.maxWeight(nx.subgraph(self.G, H))
+        # degreeScore = minDegree(nx.subgraph(self.G, H)) / maxDegree(nx.subgraph(self.G, H))
+        # weightScore = self.minWeight(nx.subgraph(self.G, H)) / self.maxWeight(nx.subgraph(self.G, H))
+        degreeScore = minDegree(nx.subgraph(self.G, H)) / maxDegree(self.G)
+        weightScore = self.minWeight(nx.subgraph(self.G, H)) / self.maxWeight(self.G)
         score = degreeScore + weightScore
         score = round(score, 2)  # 保留两位小数
         return score
@@ -108,7 +118,7 @@ class Fun:
     def WSHeuristic(self, q, h):
         print("===========权重分数启发式算法开始=============")
         # print("查询节点", q, "的度为：", self.G.degree(q))
-        H = [q] # 初始为查询节点
+        H = [q]  # 初始为查询节点
         if len(H) == 1:  # 如果只有一个节点，选取相邻权重最大的点
             weight = 0
             for i in nx.neighbors(self.G, H[0]):
@@ -126,11 +136,60 @@ class Fun:
         if len(H) == 0:
             H = [q]
         print("权重分数启发式算法得到的可行社区为:", H)
-        print("初始可行解的顶点数为：", len(H))
         print("初始可行解的最小度为：", minDegree(nx.subgraph(self.G, H)))
         print("初始可行解的最小权重为：", self.minWeight(nx.subgraph(self.G, H)))
         print("初始可行解的凝聚分数为", self.cohesiveScore(H))
         print("启发式算法结束")
         return H
 
+    # 缩减规则1(基于社区大小h的缩减)
+    # todo 感觉可以优化
+    def reduce1(self, C, R, h):
+        # print("调用缩减规则1")
+        RCopy=R.copy()
+        CAndR = list(set(C).union(set(R)))
+        CAndRGraph = nx.subgraph(self.G, CAndR)
+        for v in RCopy:
+            for u in C:
+                # 这里需要判断删减后的图是否还连通
+                # 如果不连通直接删除v
+                if not nx.has_path(CAndRGraph, u, v):
+                    R.remove(v)
+                    break
+                else:
+                    if len(nx.shortest_path(self.G, u, v)) >= h - 1:
+                        R.remove(v)
+                        print("根据reduce1移除节点", v)
+                        break
+        # print("调用缩减规则2结束")
 
+    # 缩减规则2(计算节点的上限值)
+    def reduce2(self, C, R, h, minScore):
+        RCopy = R.copy() # 利用copy数组循环，去改变R
+        for i in RCopy:
+            CAndRGraph = nx.subgraph(self.G, list(set(C).union(set(R))))  # 图C∪R
+            CAndIGraph = nx.subgraph(self.G, list(set(C).union({i})))  # 图C∪{i}
+            degreeInC = nx.degree(CAndIGraph, i)  # 节点i在C∪{i}中的度数
+            # h - len(C) - 1表示该节点最多可能再和h - len(C) - 1个节点相连
+            maxNodeCount = h - len(C) - 1
+            IMinDegree = min(nx.degree(CAndRGraph, i), nx.degree(CAndIGraph, i) + maxNodeCount)
+            degreeScore = IMinDegree / self.degreeMax
+            weight = 0
+            weightsI = []
+            for j in nx.neighbors(self.G, i):  # 遍历i的所有边，按照权重顺序排列
+                # 与C中节点连接的边一定是要加上
+                if j in C:
+                    weight += self.G.get_edge_data(i, j)['weight']
+                # 否则将边存储
+                else:
+                    weightsI.append(self.G.get_edge_data(i, j)['weight'])
+            # 如果节点i的边数大于maxNodeCount，则再选择较大的几条边作为理想情况计算权重
+            if maxNodeCount < len(weightsI):
+                sorted(weightsI, reverse=True)
+                for t in range(0, maxNodeCount):
+                    weight += weightsI[t]
+            weightScore = weight / self.weightMax
+            # print(i, "最大分数", degreeScore + weightScore)
+            if degreeScore + weightScore < minScore:
+                print("移除", i)
+                R.remove(i)
