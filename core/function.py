@@ -71,7 +71,21 @@ class Fun:
             weights.append(weight)
         return max(weights)
 
-    # 带权重的连接分数(计算候选集R中各个节点的分数)
+    # 根据度数和权重将其归1并计算分数
+    def getScore(self, degree, weight):
+        degreeScore = degree / self.degreeMax
+        weightScore = weight / self.weightMax
+        return degreeScore + weightScore
+
+    # 求出给定社区的凝聚力分数
+    def cohesiveScore(self, H):
+        degree = minDegree(nx.subgraph(self.G, H))
+        weight = self.minWeight(nx.subgraph(self.G, H))
+        score = self.getScore(degree, weight)
+        score = round(score, 2)  # 保留两位小数
+        return score
+
+    # 带权重的连接分数,用于启发式算法计算初始可行社区
     def ConnectScoreWeight(self, C):
         copyC = C.copy()  # 用copyC 代替C的所有操作,否则求完连接分数后C会改变
         scoreDict = {}  # 字典保存R中每个节点的连接分数
@@ -103,17 +117,6 @@ class Fun:
         scoreMaxNode = max(scoreDict, key=scoreDict.get)
         return scoreDict
 
-    # 求出社区的凝聚力分数
-    # score=w+d
-    def cohesiveScore(self, H):
-        # degreeScore = minDegree(nx.subgraph(self.G, H)) / maxDegree(nx.subgraph(self.G, H))
-        # weightScore = self.minWeight(nx.subgraph(self.G, H)) / self.maxWeight(nx.subgraph(self.G, H))
-        degreeScore = minDegree(nx.subgraph(self.G, H)) / maxDegree(self.G)
-        weightScore = self.minWeight(nx.subgraph(self.G, H)) / self.maxWeight(self.G)
-        score = degreeScore + weightScore
-        score = round(score, 2)  # 保留两位小数
-        return score
-
     # 利用权重分数计算初始社区（Q：查询节点集合，h:目标社区的节点数量）
     def WSHeuristic(self, q, h):
         print("===========权重分数启发式算法开始=============")
@@ -137,7 +140,9 @@ class Fun:
             H = [q]
         print("权重分数启发式算法得到的可行社区为:", H)
         print("初始可行解的最小度为：", minDegree(nx.subgraph(self.G, H)))
+        print("初始可行解的最大度为：", maxDegree(nx.subgraph(self.G, H)))
         print("初始可行解的最小权重为：", self.minWeight(nx.subgraph(self.G, H)))
+        print("初始可行解的最大权重为：", self.maxWeight(nx.subgraph(self.G, H)))
         print("初始可行解的凝聚分数为", self.cohesiveScore(H))
         print("启发式算法结束")
         return H
@@ -146,7 +151,7 @@ class Fun:
     # todo 感觉可以优化
     def reduce1(self, C, R, h):
         # print("调用缩减规则1")
-        RCopy=R.copy()
+        RCopy = R.copy()
         CAndR = list(set(C).union(set(R)))
         CAndRGraph = nx.subgraph(self.G, CAndR)
         for v in RCopy:
@@ -165,15 +170,15 @@ class Fun:
 
     # 缩减规则2(计算节点的上限值)
     def reduce2(self, C, R, h, minScore):
-        RCopy = R.copy() # 利用copy数组循环，去改变R
+        RCopy = R.copy()  # 利用copy数组循环，去改变R
         for i in RCopy:
             CAndRGraph = nx.subgraph(self.G, list(set(C).union(set(R))))  # 图C∪R
             CAndIGraph = nx.subgraph(self.G, list(set(C).union({i})))  # 图C∪{i}
             degreeInC = nx.degree(CAndIGraph, i)  # 节点i在C∪{i}中的度数
             # h - len(C) - 1表示该节点最多可能再和h - len(C) - 1个节点相连
             maxNodeCount = h - len(C) - 1
-            IMinDegree = min(nx.degree(CAndRGraph, i), nx.degree(CAndIGraph, i) + maxNodeCount)
-            degreeScore = IMinDegree / self.degreeMax
+            # 节点i的
+            IDegreeUpper = min(nx.degree(CAndRGraph, i), nx.degree(CAndIGraph, i) + maxNodeCount)
             weight = 0
             weightsI = []
             for j in nx.neighbors(self.G, i):  # 遍历i的所有边，按照权重顺序排列
@@ -188,8 +193,33 @@ class Fun:
                 sorted(weightsI, reverse=True)
                 for t in range(0, maxNodeCount):
                     weight += weightsI[t]
-            weightScore = weight / self.weightMax
+            score = self.getScore(IDegreeUpper, weight)
             # print(i, "最大分数", degreeScore + weightScore)
-            if degreeScore + weightScore < minScore:
-                print("移除", i)
+            if score < minScore:
+                # print("移除", i)
                 R.remove(i)
+
+    # 基于上界修剪
+    # 基于部分解C的分数上界
+    def scoreUpperbound(self, C, R, h):
+        degreeList = []
+        weightList = []
+        CAndR = list(set(C).union(set(R)))
+        CAndRGraph = nx.subgraph(self.G, CAndR)
+        CGraph = nx.subgraph(self.G, C)
+        lengthC = len(CGraph.nodes)
+        for u in C:
+            # 计算u的可能最大度数
+            degreeList.append(min(CAndRGraph.degree(u), CGraph.degree(u) + h - lengthC))
+            # 计算u在C∪R中的可能最大权重
+            weightInCAndR = 0
+            weightInC = 0
+            for i in nx.neighbors(CAndRGraph, u):
+                weightInCAndR += self.G.get_edge_data(i, u)['weight']
+            for j in nx.neighbors(CGraph, u):
+                weightInC += self.G.get_edge_data(j, u)['weight']
+            weightList.append(min(weightInCAndR, weightInC + (h - lengthC) * self.weightMax))
+            # todo 这里乘以的数值是不是可以换成当前已经修剪的图中的最大权重值
+        upperDegree = min(degreeList)
+        upperWeight = min(weightList)
+        return self.getScore(upperDegree, upperWeight)

@@ -8,8 +8,8 @@ import core.fileHandle as fh
 def Recursion(C, R, H, h, score):
     # fun = fc.Fun(G)
     fun.reduce1(C, R, h)
-    # fun.reduce2(C,R,h,score)
-    print("缩减后R：",R)
+    fun.reduce2(C, R, h, score)
+    # print("缩减后R：",R)
     # 如果C满足个数且最小权重更大
     if len(C) == h and fun.cohesiveScore(C) > score:
         # 更新H和最小权重
@@ -18,7 +18,9 @@ def Recursion(C, R, H, h, score):
         score = fun.cohesiveScore(C)
         print("更新社区:", H, "凝聚分数为", score)
     # 如果C的节点数小于h并且候选集R不为空
-    if len(C) < h and len(R) != 0:
+    Upperbound = fun.scoreUpperbound(C, R, h)
+    print("C的分数上界：",Upperbound,"score:",score)
+    if len(C) < h and len(R) != 0 and Upperbound > score:
         for v in R:
             CAndV = list(set(C).union({v}))
             RExcludeV = list(set(R).difference({v}))
@@ -43,6 +45,7 @@ def WBS(G, q, h):
         H, score = Recursion([q], R, H, h, scoreLower)  # 初始最优社区就是SCheu算出的可行社区H
     return H
 
+
 # if __name__ == '__main__':
 #     # 测试用例
 #     GTest = [(0, 1, 10), (0, 2, 10), (0, 3, 5), (0, 4, 6), (0, 5, 5),
@@ -65,15 +68,17 @@ if __name__ == '__main__':
     #          (4, 5, 7), (4, 6, 6), (4, 9, 9),
     #          (5, 6, 7), (5, 7, 7), (5, 8, 6), (6, 7, 8), (6, 8, 6), (7, 8, 10), (8, 9, 4)]
 
-    count=0
+    count = 0
     GTest = fh.csvResolve("dataset/bitcoinData.csv")
     G = nx.Graph()
     G.add_weighted_edges_from(GTest)
     fun = fc.Fun(G)
+    print("母图的最大度数",fun.degreeMax)
+    print("母图的最大权重",fun.weightMax)
     H = fun.WSHeuristic(104, 5)
-    scoreH=fun.cohesiveScore(H)
-    print("启发式算法社区", H,"凝聚分数", scoreH)
-    fc.paint(GTest,H)
+    scoreH = fun.cohesiveScore(H)
+    print("启发式算法社区", H, "凝聚分数", scoreH)
+    fc.paint(GTest, H)
     result = WBS(G, 104, 5)
     scoreResult = fun.cohesiveScore(result)
     print("最终结果", result, "凝聚分数", scoreResult)
