@@ -2,6 +2,7 @@
 import networkx as nx
 import core.function as fc
 import core.fileHandle as fh
+import time
 
 
 # 递归函数
@@ -19,13 +20,14 @@ def Recursion(C, R, H, h, score):
         print("更新社区:", H, "凝聚分数为", score)
     # 如果C的节点数小于h并且候选集R不为空
     Upperbound = fun.scoreUpperbound(C, R, h)
-    print("C的分数上界：",Upperbound,"score:",score)
+    # print("C的分数上界：",Upperbound,"score:",score)
     if len(C) < h and len(R) != 0 and Upperbound > score:
-        for v in R:
-            CAndV = list(set(C).union({v}))
-            RExcludeV = list(set(R).difference({v}))
-            H, score = Recursion(CAndV, RExcludeV, H, h, score)
-            H, score = Recursion(C, RExcludeV, H, h, score)
+        # 从候选集R中选一个节点生成两个分支
+        v=R[0]
+        CAndV = list(set(C).union({v}))
+        RExcludeV = list(set(R).difference({v}))
+        H, score = Recursion(CAndV, RExcludeV, H, h, score)
+        H, score = Recursion(C, RExcludeV, H, h, score)
     return H, score
 
 
@@ -68,6 +70,7 @@ if __name__ == '__main__':
     #          (4, 5, 7), (4, 6, 6), (4, 9, 9),
     #          (5, 6, 7), (5, 7, 7), (5, 8, 6), (6, 7, 8), (6, 8, 6), (7, 8, 10), (8, 9, 4)]
 
+    startTime=time.time()
     count = 0
     GTest = fh.csvResolve("dataset/bitcoinData.csv")
     G = nx.Graph()
@@ -75,26 +78,15 @@ if __name__ == '__main__':
     fun = fc.Fun(G)
     print("母图的最大度数",fun.degreeMax)
     print("母图的最大权重",fun.weightMax)
-    H = fun.WSHeuristic(104, 5)
+    H = fun.WSHeuristic(104, 8)
     scoreH = fun.cohesiveScore(H)
     print("启发式算法社区", H, "凝聚分数", scoreH)
     fc.paint(GTest, H)
-    result = WBS(G, 104, 5)
+    result = WBS(G, 104, 8)
     scoreResult = fun.cohesiveScore(result)
     print("最终结果", result, "凝聚分数", scoreResult)
+    print("初始可行解的最小度为：", fc.minDegree(nx.subgraph(G, result)))
+    print("初始可行解的最小权重为：", fun.minWeight(nx.subgraph(G, H)))
     fc.paint(GTest, result)
-    # print("最小度", fc.minDegree(G))
-    # print("最大度", fc.maxDegree(G))
-    # print("最小权重", fun.minWeight(G))
-    # print("最大权重", fun.maxWeight(G))
-    # score=fun.cohesiveScore(G.nodes())
-    # print("凝聚分数", score)
-    # print("权重连接分数", sorted(fun.ConnectScoreWeight([3, 4, 5, 6]).items(), key=lambda x: x[1]))
-    C = [3, 4, 5, 6]
-    R = list(set(G.nodes).difference(C))
-    # fun.reduce2(C,R,6,0.62)
-    # H,score=Recursion(C,R,[],6,0.5)
-    # print(H, score)
-
-    # H = fun.WSHeuristic(0, 5)
-    # fc.paint(GTest, H)
+    endTime=time.time()
+    print("搜索完成共耗时：",endTime-startTime)

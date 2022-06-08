@@ -82,7 +82,7 @@ class Fun:
         degree = minDegree(nx.subgraph(self.G, H))
         weight = self.minWeight(nx.subgraph(self.G, H))
         score = self.getScore(degree, weight)
-        score = round(score, 2)  # 保留两位小数
+        score = round(score, 3)  # 保留两位小数
         return score
 
     # 带权重的连接分数,用于启发式算法计算初始可行社区
@@ -164,7 +164,7 @@ class Fun:
                 else:
                     if len(nx.shortest_path(self.G, u, v)) >= h - 1:
                         R.remove(v)
-                        print("根据reduce1移除节点", v)
+                        # print("根据reduce1移除节点", v)
                         break
         # print("调用缩减规则2结束")
 
