@@ -35,13 +35,14 @@ def paint(GList, H):
     if len(H) != 0:
         G = G.subgraph(H)
     # 生成节点位置序列（）
-    pos = nx.circular_layout(G)
+    pos = nx.spring_layout(G)
     # 重新获取权重序列
     weights = nx.get_edge_attributes(G, "weight")
     # 画节点图
     nx.draw_networkx(G, pos, with_labels=True)
     # 画权重图
     nx.draw_networkx_edge_labels(G, pos, edge_labels=weights)
+    plt.title("WS")
     plt.show()
 
 
@@ -71,7 +72,7 @@ class Fun:
             weights.append(weight)
         return max(weights)
 
-    # 根据度数和权重将其归1并计算分数
+    # 根据度数和权重将其归1并转化为分数
     def getScore(self, degree, weight):
         degreeScore = degree / self.degreeMax
         weightScore = weight / self.weightMax
@@ -79,10 +80,11 @@ class Fun:
 
     # 求出给定社区的凝聚力分数
     def cohesiveScore(self, H):
-        degree = minDegree(nx.subgraph(self.G, H))
-        weight = self.minWeight(nx.subgraph(self.G, H))
+        graph = nx.subgraph(self.G, H)
+        degree = minDegree(graph)
+        weight = self.minWeight(graph)
         score = self.getScore(degree, weight)
-        score = round(score, 3)  # 保留两位小数
+        score = round(score, 4)  # 保留两位小数
         return score
 
     # 带权重的连接分数,用于启发式算法计算初始可行社区
@@ -140,9 +142,7 @@ class Fun:
             H = [q]
         print("权重分数启发式算法得到的可行社区为:", H)
         print("初始可行解的最小度为：", minDegree(nx.subgraph(self.G, H)))
-        print("初始可行解的最大度为：", maxDegree(nx.subgraph(self.G, H)))
         print("初始可行解的最小权重为：", self.minWeight(nx.subgraph(self.G, H)))
-        print("初始可行解的最大权重为：", self.maxWeight(nx.subgraph(self.G, H)))
         print("初始可行解的凝聚分数为", self.cohesiveScore(H))
         print("启发式算法结束")
         return H
