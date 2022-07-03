@@ -8,6 +8,7 @@ import time
 # 递归函数
 def Recursion(C, R, H, h, score):
     # fun = fc.Fun(G)
+    # fun.reduce0(C,R)
     fun.reduce1(C, R, h)
     fun.reduce2(C, R, h, score)
     # print("缩减后R：",R)
@@ -76,14 +77,17 @@ if __name__ == '__main__':
     G = nx.Graph()
     G.add_weighted_edges_from(GTest)
     fun = fc.Fun(G)
+    # 开始测试
+    # 设置要求的社区规模
+    size=7
     # fc.paint(GTest,[])
     print("母图的最大度数",fun.degreeMax)
     print("母图的最大权重",fun.weightMax)
-    H = fun.WSHeuristic(1, 8)
+    H = fun.WSHeuristic(1, size)
     scoreH = fun.cohesiveScore(H)
     print("启发式算法社区", H, "凝聚分数", scoreH)
     fc.paint(GTest, H)
-    result = WBS(G, 1, 8)
+    result = WBS(G, 1, size)
     scoreResult = fun.cohesiveScore(result)
     print("最终结果", result, "凝聚分数", scoreResult)
     print("最终社区的最小度为：", fc.minDegree(nx.subgraph(G, result)))

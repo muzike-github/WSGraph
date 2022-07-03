@@ -147,6 +147,12 @@ class Fun:
         print("启发式算法结束")
         return H
 
+    # 先把与C中每个节点都不相连的顶点从R中删除
+    def reduce0(self,C, R):
+        for v in C:
+            for u in R:
+                if not self.G.has_edge(u, v):
+                    R.remove(u)
     # 缩减规则1(基于社区大小h的缩减)
     # todo 感觉可以优化
     def reduce1(self, C, R, h):
