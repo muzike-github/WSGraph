@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 
-# 求图G的最小度
+# 求图G的最小度(G为图)
 def minDegree(G):
     degrees = []
     for i in G:
@@ -28,14 +28,14 @@ def rule2Lemma(K, D):
 
 
 # 用于画图的函数
-def paint(GList, H,str):
+def paint(GList, H, str):
     # 添加加权边
     G = nx.Graph()
     G.add_weighted_edges_from(GList)
     if len(H) != 0:
         G = G.subgraph(H)
     # 生成节点位置序列（）
-    pos = nx.circular_layout(G)
+    pos = nx.spring_layout(G)
     # 重新获取权重序列
     weights = nx.get_edge_attributes(G, "weight")
     # 画节点图
@@ -149,11 +149,12 @@ class Fun:
         return H
 
     # 先把与C中每个节点都不相连的顶点从R中删除
-    def reduce0(self,C, R):
+    def reduce0(self, C, R):
         for v in C:
             for u in R:
                 if not self.G.has_edge(u, v):
                     R.remove(u)
+
     # 缩减规则1(基于社区大小h的缩减)
     # todo 感觉可以优化
     def reduce1(self, C, R, h):
@@ -174,6 +175,29 @@ class Fun:
                         # print("根据reduce1移除节点", v)
                         break
         # print("调用缩减规则2结束")
+
+    def reduceBydiameter(self, C, R, h, k1):
+        # print("调用缩减规则2")
+        CAndR = list(set(C).union(set(R)))
+        CAndRGraph = nx.subgraph(self.G, CAndR)
+        # D = nx.diameter(CAndRGraph)  # C∪R子图的直径
+        for v in R:
+            for u in C:
+                # 这里需要判断删减后的图是否还连通
+                # 如果不连通直接删除v
+                if not nx.has_path(CAndRGraph, u, v):
+                    R.remove(v)
+                    break
+                else:
+                    # 根据两点之间的最短线路来求两点之间的距离
+                    dist = len(nx.shortest_path(CAndRGraph, u, v)) - 1
+                    # print(u,":",v,"之间的距离为",dist)
+                    if rule2Lemma(k1 + 1, dist) > h:
+                        R.remove(v)
+                        # print("根据reduce2移除节点", v)
+                        break
+        # print("调用缩减规则2结束")
+        return R
 
     # 缩减规则2(计算节点的上限值)
     def reduce2(self, C, R, h, minScore):
@@ -200,11 +224,13 @@ class Fun:
                 sorted(weightsI, reverse=True)
                 for t in range(0, maxNodeCount):
                     weight += weightsI[t]
+            # 　根据节点可能连接的最多节点和最大权重边计算节点的最大理想分数
             score = self.getScore(IDegreeUpper, weight)
             # print(i, "最大分数", degreeScore + weightScore)
             if score < minScore:
                 # print("移除", i)
                 R.remove(i)
+        return R
 
     # 基于上界修剪
     # 基于部分解C的分数上界

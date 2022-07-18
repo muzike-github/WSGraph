@@ -7,10 +7,11 @@ import time
 
 # 递归函数
 def Recursion(C, R, H, h, score):
-    # fun = fc.Fun(G)
+    # k1 = fc.minDegree(nx.subgraph(G,H))
     # fun.reduce0(C,R)
-    #fun.reduce1(C, R, h)
-    fun.reduce2(C, R, h, score)
+    # fun.reduce1(C, R, h)
+    # R = fun.reduceBydiameter(C,R,h,k1)
+    R = fun.reduce2(C, R, h, score)
     # print("缩减后R：",R)
     # 如果C满足个数且最小权重更大
     if len(C) == h and fun.cohesiveScore(C) > score:
@@ -73,23 +74,27 @@ if __name__ == '__main__':
 
     startTime = time.time()
     count = 0
-    GTest = fh.csvResolve("dataset/bitcoinData.csv")
+    # GTest = fh.csvResolve("dataset/bitcoinData.csv")
+    GTest = fh.csvResolve("dataset/wiki-vote.csv")
     G = nx.Graph()
     G.add_weighted_edges_from(GTest)
     fun = fc.Fun(G)
     # 开始测试
     # 设置要求的社区规模
-    size = 6
+    size = 8
     # fc.paint(GTest,[])
     print("母图的最大度数", fun.degreeMax)
     print("母图的最大权重", fun.weightMax)
-    print("数据的节点数量",len(G.nodes))
-    print("数据的边数量",len(G.edges))
-    H = fun.WSHeuristic(1, size)
+    print("数据的节点数量", len(G.nodes))
+    print("数据的边数量", len(G.edges))
+    H = fun.WSHeuristic(7, size)
     scoreH = fun.cohesiveScore(H)
     print("启发式算法社区", H, "凝聚分数", scoreH)
     # fc.paint(GTest, H,"WS启发式算法")
-    result = WBS(G, 1, size)
+    # soc-sign-bitcoinotc.csv数据集
+    # result = WBS(G, 1, size)
+    # wiki-vote.csv数据集
+    result = WBS(G, 7, 7)
     scoreResult = fun.cohesiveScore(result)
     print("最终结果", result, "凝聚分数", scoreResult)
     print("最终社区的最小度为：", fc.minDegree(nx.subgraph(G, result)))
