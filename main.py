@@ -11,7 +11,7 @@ def Recursion(C, R, H, h, score):
     # fun.reduce0(C,R)
     # fun.reduce1(C, R, h)
     # R = fun.reduceBydiameter(C,R,h,k1)
-    R = fun.reduce2(C, R, h, score)
+
     # print("缩减后R：",R)
     # 如果C满足个数且最小权重更大
     if len(C) == h and fun.cohesiveScore(C) > score:
@@ -19,7 +19,9 @@ def Recursion(C, R, H, h, score):
         H.clear()
         H = C[:]
         score = fun.cohesiveScore(C)
-        print("更新社区:", "凝聚分数为", score)
+        print("更新社区:", H, "凝聚分数为", score)
+    # 进行剪枝
+    R = fun.reduce2(C, R, h, score)
     # 如果C的节点数小于h并且候选集R不为空
     Upperbound = fun.scoreUpperbound(C, R, h)
     # print("C的分数上界：",Upperbound,"score:",score)
@@ -75,26 +77,37 @@ if __name__ == '__main__':
     startTime = time.time()
     count = 0
     # GTest = fh.csvResolve("dataset/bitcoinData.csv")
-    GTest = fh.csvResolve("dataset/wiki-vote.csv")
+    GTest = fh.csvResolve("dataset/com-dblp-ungraph.csv")
     G = nx.Graph()
+    # print(nx.is_connected())
+    # connect_components = nx.connected_components(G)
+    # print(nx.number_connected_components(G))
+    # for cc in connect_components:
+    #     print(cc)
     G.add_weighted_edges_from(GTest)
     fun = fc.Fun(G)
     # 开始测试
-    # 设置要求的社区规模
-    size = 8
-    # fc.paint(GTest,[])
+
+    # fc.paint(GTest,[],"母图")
     print("母图的最大度数", fun.degreeMax)
     print("母图的最大权重", fun.weightMax)
     print("数据的节点数量", len(G.nodes))
     print("数据的边数量", len(G.edges))
-    H = fun.WSHeuristic(7, size)
-    scoreH = fun.cohesiveScore(H)
-    print("启发式算法社区", H, "凝聚分数", scoreH)
+    # 设置要求的社区规模
+    size = 7
+    # H = fun.WSHeuristic(247, size)
+    # scoreH = fun.cohesiveScore(H)
+    # print("启发式算法社区", H, "凝聚分数", scoreH)
     # fc.paint(GTest, H,"WS启发式算法")
-    # soc-sign-bitcoinotc.csv数据集
+    # bitcoin.csv数据集,查询节点为1
     # result = WBS(G, 1, size)
-    # wiki-vote.csv数据集
-    result = WBS(G, 7, 7)
+    # wiki-vote.csv数据集,查询节点为7
+    # result = WBS(G, 7, size)
+    # email-weight数据集，查询节点256
+    # result = WBS(G, 256, size)
+    # com-dblp-ungraph数据集，查询节点247
+    # com-dblp-ungraph数据集，查询节点354
+    result = WBS(G, 354, size)
     scoreResult = fun.cohesiveScore(result)
     print("最终结果", result, "凝聚分数", scoreResult)
     print("最终社区的最小度为：", fc.minDegree(nx.subgraph(G, result)))

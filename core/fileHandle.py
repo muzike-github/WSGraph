@@ -14,9 +14,9 @@ def txtResolve(filename):
         nodeturple = tuple(node)
         Glist.append(nodeturple)
         line = f.readline()
-        t = t + 1
-        if t > 1000:
-            break
+        # t = t + 1
+        # if t > 1000:
+        #     break
     f.close()
     return Glist
 
@@ -30,12 +30,12 @@ def csvResolve(filename):
         header_row = next(render)  # 取表头
         for row in render:
             t = t + 1
-            if t > 1000:
+            if t > 10000:
                 break
             node1 = int(row[0])
             node2 = int(row[1])
             weight = int(row[2])
-            Glist.append((node1, node2, weight + 10))
+            Glist.append((node1, node2, weight))
     # print(Glist)
     return Glist
 

@@ -34,12 +34,12 @@ def txt_no_weight_trans(filename,output_filename):
         weight = str(weight)
         nodes_weight_list.append((e[0], e[1], weight))
     # 写入csv文件
-    csv_path = 'dataset/wiki-vote.csv'
+    csv_path = 'dataset/'+output_filename
     csv_file = open(csv_path, 'w', encoding='utf-8', newline='')
     csv_write = csv.writer(csv_file)
     # 　开始写入
     for i in nodes_weight_list:
-        print(list(i))
+        # print(list(i))
         csv_write.writerow(list(i))
 
     return nodes_weight_list
@@ -72,6 +72,6 @@ def txt_weight_trans(filename, output_filename):
 
 
 # 将无权图处理为加权图
-#txt_no_weight_trans("dataset/Wiki-Vote.txt","wiki-vote.csv")
+txt_no_weight_trans("dataset/Wiki-Vote.txt","Wiki-Vote.csv")
 # 将加权图直接处理为csv格式
-txt_weight_trans("dataset/emailWeight.txt","emailWeight.csv")
+# txt_weight_trans("dataset/com-dblp-ungraph.txt", "com-dblp-ungraph.csv")

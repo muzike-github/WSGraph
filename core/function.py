@@ -35,7 +35,7 @@ def paint(GList, H, str):
     if len(H) != 0:
         G = G.subgraph(H)
     # 生成节点位置序列（）
-    pos = nx.spring_layout(G)
+    pos = nx.circular_layout(G)
     # 重新获取权重序列
     weights = nx.get_edge_attributes(G, "weight")
     # 画节点图
@@ -85,7 +85,7 @@ class Fun:
         degree = minDegree(graph)
         weight = self.minWeight(graph)
         score = self.getScore(degree, weight)
-        score = round(score, 4)  # 保留两位小数
+        score = round(score, 5)  # 保留两位小数
         return score
 
     # 带权重的连接分数,用于启发式算法计算初始可行社区
@@ -108,7 +108,8 @@ class Fun:
                 for i in nx.neighbors(graphCAndV, v):  # 得到v(v∈R)在C∪{v}所有的邻居节点
                     tempWeight = self.G.get_edge_data(v, i)['weight']
                     if graphC.degree(i) != 0:
-                        score += (1 / graphC.degree(i)) * int(tempWeight)
+                        # score += (1 / graphC.degree(i)) * int(tempWeight)
+                        score += (1 / graphC.degree(i))
                         score = round(score, 2)
                     else:
                         score = 0
@@ -125,12 +126,11 @@ class Fun:
         print("===========权重分数启发式算法开始=============")
         # print("查询节点", q, "的度为：", self.G.degree(q))
         H = [q]  # 初始为查询节点
-        if len(H) == 1:  # 如果只有一个节点，选取相邻权重最大的点
-            weight = 0
+        if len(H) == 1:  # 如果只有一个节点，选取相邻权重最大的点（邻居中度最大的节点）
+            degree = 0
             for i in nx.neighbors(self.G, H[0]):
-                tempWeight = int(self.G.get_edge_data(i, H[0])['weight'])
-                if tempWeight > weight:
-                    weight = tempWeight
+                # tempWeight = int(self.G.get_edge_data(i, H[0])['weight'])
+                if self.G.degree(i) > degree:
                     node = i
             H.append(node)
         print("第二个节点是", H)
@@ -212,23 +212,26 @@ class Fun:
             IDegreeUpper = min(nx.degree(CAndRGraph, i), nx.degree(CAndIGraph, i) + maxNodeCount)
             weight = 0
             weightsI = []
-            for j in nx.neighbors(self.G, i):  # 遍历i的所有边，按照权重顺序排列
+            for j in nx.neighbors(CAndRGraph, i):  # 遍历i的所有边，按照权重顺序排列
                 # 与C中节点连接的边一定是要加上
                 if j in C:
-                    weight += self.G.get_edge_data(i, j)['weight']
+                    weight += CAndRGraph.get_edge_data(i, j)['weight']
                 # 否则将边存储
                 else:
-                    weightsI.append(self.G.get_edge_data(i, j)['weight'])
-            # 如果节点i的边数大于maxNodeCount，则再选择较大的几条边作为理想情况计算权重
-            if maxNodeCount < len(weightsI):
+                    weightsI.append(CAndRGraph.get_edge_data(i, j)['weight'])
+            # 如果当前节点u的最大可连接数maxNodeCount不为0，表明节点u还有机会在下一次递归中连接其他的边
+            if maxNodeCount != 0:
+                # 降序排列，取前maxNodeCount条边,若u没有那么多邻居边，则取所有邻边
                 sorted(weightsI, reverse=True)
-                for t in range(0, maxNodeCount):
+                for t in range(0, min(maxNodeCount, len(weightsI))):
                     weight += weightsI[t]
             # 　根据节点可能连接的最多节点和最大权重边计算节点的最大理想分数
             score = self.getScore(IDegreeUpper, weight)
             # print(i, "最大分数", degreeScore + weightScore)
             if score < minScore:
                 # print("移除", i)
+                # if i == 425:
+                #     print("移除节点425","分数为",score)
                 R.remove(i)
         return R
 
@@ -243,16 +246,17 @@ class Fun:
         lengthC = len(CGraph.nodes)
         for u in C:
             # 计算u的可能最大度数
-            degreeList.append(min(CAndRGraph.degree(u), CGraph.degree(u) + h - lengthC))
-            # 计算u在C∪R中的可能最大权重
+            degreeList.append(min(CAndRGraph.degree(u), CGraph.degree(u) + (h - lengthC)))
+            # 计算u在C∪R、C中的可能最大权重
             weightInCAndR = 0
             weightInC = 0
             for i in nx.neighbors(CAndRGraph, u):
-                weightInCAndR += self.G.get_edge_data(i, u)['weight']
+                weightInCAndR += CAndRGraph.get_edge_data(i, u)['weight']
             for j in nx.neighbors(CGraph, u):
-                weightInC += self.G.get_edge_data(j, u)['weight']
+                weightInC += CAndRGraph.get_edge_data(j, u)['weight']
             weightList.append(min(weightInCAndR, weightInC + (h - lengthC) * self.weightMax))
             # todo 这里乘以的数值是不是可以换成当前已经修剪的图中的最大权重值
         upperDegree = min(degreeList)
         upperWeight = min(weightList)
         return self.getScore(upperDegree, upperWeight)
+
